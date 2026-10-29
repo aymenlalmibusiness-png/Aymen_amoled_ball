@@ -1,0 +1,676 @@
+0<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Aymen Amoled Ball</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
+        
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000000;
+            font-family: 'Cairo', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #game-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            transition: opacity 0.3s;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        h1.neon-text {
+            font-size: 3.5rem;
+            font-weight: 900;
+            margin-bottom: 1rem;
+            text-align: center;
+            text-shadow: 0 0 10px #fff, 0 0 20px #0ff, 0 0 30px #0ff, 0 0 40px #0ff;
+            line-height: 1.2;
+        }
+
+        .btn-neon {
+            background: transparent;
+            color: #fff;
+            border: 2px solid #0ff;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            border-radius: 10px;
+            margin: 10px;
+            cursor: pointer;
+            box-shadow: 0 0 10px #0ff inset, 0 0 10px #0ff;
+            transition: all 0.2s;
+            font-family: 'Cairo', sans-serif;
+            text-transform: uppercase;
+        }
+
+        .btn-neon:hover, .btn-neon:active {
+            background: #0ff;
+            color: #000;
+            box-shadow: 0 0 20px #0ff inset, 0 0 30px #0ff;
+        }
+
+        .btn-level-1 { border-color: #0088ff; box-shadow: 0 0 10px #0088ff inset, 0 0 10px #0088ff; text-shadow: 0 0 5px #0088ff;}
+        .btn-level-1:hover { background: #0088ff; }
+        
+        .btn-level-2 { border-color: #ff5500; box-shadow: 0 0 10px #ff5500 inset, 0 0 10px #ff5500; text-shadow: 0 0 5px #ff5500;}
+        .btn-level-2:hover { background: #ff5500; }
+
+        .btn-level-3 { border-color: #ffaa00; box-shadow: 0 0 10px #ffaa00 inset, 0 0 10px #ffaa00; text-shadow: 0 0 5px #ffaa00;}
+        .btn-level-3:hover { background: #ffaa00; }
+
+        .btn-level-4 { border-color: #ff00ff; box-shadow: 0 0 10px #ff00ff inset, 0 0 10px #ff00ff; text-shadow: 0 0 5px #ff00ff;}
+        .btn-level-4:hover { background: #ff00ff; }
+
+        .btn-level-5 { border-color: #00ffff; box-shadow: 0 0 10px #00ffff inset, 0 0 10px #00ffff; text-shadow: 0 0 5px #00ffff;}
+        .btn-level-5:hover { background: #00ffff; color: black; }
+
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .level-grid .btn-level-5 {
+            grid-column: span 2;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 10;
+            box-sizing: border-box;
+            pointer-events: none;
+            direction: ltr;
+        }
+
+        .control-btn {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            backdrop-filter: blur(4px);
+            pointer-events: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0.7;
+            transition: opacity 0.1s, background 0.1s;
+            cursor: pointer;
+        }
+
+        .control-btn:active, .control-btn.active-touch {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+
+        .arrow {
+            width: 0; 
+            height: 0; 
+            border-top: 25px solid transparent;
+            border-bottom: 25px solid transparent;
+        }
+        
+        .arrow-left { border-right: 40px solid rgba(255, 255, 255, 0.9); }
+        .arrow-right { border-left: 40px solid rgba(255, 255, 255, 0.9); }
+
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-shadow: 0 0 5px #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="game-canvas"></canvas>
+
+    <div id="hud" class="hidden">المرحلة: <span id="hud-level">1</span></div>
+
+    <div id="controls" class="hidden">
+        <div id="btn-left" class="control-btn"><div class="arrow arrow-left"></div></div>
+        <div id="btn-right" class="control-btn"><div class="arrow arrow-right"></div></div>
+    </div>
+
+    <!-- Main Menu -->
+    <div id="menu-main" class="overlay">
+        <h1 class="neon-text">AYMEN<br>AMOLED BALL</h1>
+        <p class="mb-6 text-gray-300 text-center max-w-md px-4 text-lg">العب في الفضاء واجتز المكعبات</p>
+        <div class="level-grid">
+            <button class="btn-neon btn-level-1" onclick="startGame(1)">1. الأرض</button>
+            <button class="btn-neon btn-level-2" onclick="startGame(2)">2. الشمس</button>
+            <button class="btn-neon btn-level-3" onclick="startGame(3)">3. المجرة</button>
+            <button class="btn-neon btn-level-4" onclick="startGame(4)">4. السديم</button>
+            <button class="btn-neon btn-level-5" onclick="startGame(5)">5. الثقب الأسود</button>
+        </div>
+    </div>
+
+    <!-- Level Complete Menu -->
+    <div id="menu-complete" class="overlay hidden">
+        <h1 class="neon-text" style="color: #0f0; text-shadow: 0 0 10px #0f0, 0 0 20px #0f0;">اكتملت المرحلة!</h1>
+        <button id="btn-next-stage" class="btn-neon" onclick="startNextLevel()">المرحلة القادمة</button>
+        <button class="btn-neon" style="border-color: #fa0; box-shadow: 0 0 10px #fa0 inset, 0 0 10px #fa0;" onclick="startGame(currentLevel)">إعادة المرحلة</button>
+        <button class="btn-neon" style="border-color: #f00; box-shadow: 0 0 10px #f00 inset, 0 0 10px #f00;" onclick="showMainMenu()">الرئيسية</button>
+    </div>
+
+    <!-- Victory Menu -->
+    <div id="menu-victory" class="overlay hidden">
+        <h1 class="neon-text" style="color: #0ff; text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff;">بطل الفضاء!</h1>
+        <p class="mb-6 text-gray-300 text-center text-lg">لقد أنهيت جميع المراحل بمهارة مطلقة.</p>
+        <button class="btn-neon btn-level-5" onclick="startGame(1)">إعادة من الصفر</button>
+        <button class="btn-neon" style="border-color: #f00; box-shadow: 0 0 10px #f00 inset, 0 0 10px #f00;" onclick="showMainMenu()">الرئيسية</button>
+    </div>
+
+    <script>
+        const levels = {
+            1: { name: "الأرض", speed: 2.2, length: 6000, ball: { color: 0x888888, roughness: 0.5, metalness: 0.9 }, neon: 0x0088ff, particles: 0xffffff, obsFreq: 150 }, 
+            2: { name: "الشمس", speed: 2.6, length: 7000, ball: { color: 0xb87333, roughness: 0.3, metalness: 0.9 }, neon: 0xff5500, particles: 0xffaa00, obsFreq: 140 }, 
+            3: { name: "المجرة", speed: 3.1, length: 8000, ball: { color: 0xffd700, roughness: 0.2, metalness: 1.0 }, neon: 0xffaa00, particles: 0xffff00, obsFreq: 130 }, 
+            4: { name: "السديم", speed: 3.7, length: 9000, ball: { color: 0xe5e4e2, roughness: 0.1, metalness: 1.0 }, neon: 0xff00ff, particles: 0xdd88ff, obsFreq: 120 }, 
+            5: { name: "الثقب الأسود", speed: 4.5, length: 10000, ball: { color: 0x00ffff, roughness: 0.0, metalness: 1.0, clearcoat: true }, neon: 0x00ffff, particles: 0xaaaaaa, obsFreq: 110 } 
+        };
+
+        const TRACK_WIDTH = 12;
+        const BALL_RADIUS = 1;
+        const OBS_HEIGHT = 2;
+        const OBS_DEPTH = 2;
+
+        let currentLevel = 1;
+        let gameState = 'menu';
+        let moveLeft = false;
+        let moveRight = false;
+        let animationId;
+
+        let audioCtx;
+        let activeNodes = [];
+        let musicTimerID;
+        let nextNoteTime = 0.0;
+        let current16thNote = 0;
+        let tempo = 130;
+
+        let scene, camera, renderer;
+        let ball, trackGroup, obstacles = [], finishLine, particles;
+        let ballBox = new THREE.Box3();
+        let obsBox = new THREE.Box3();
+
+        function enterFullscreen() {
+            let elem = document.documentElement;
+            if (elem.requestFullscreen) { elem.requestFullscreen(); }
+            else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); }
+            else if (elem.msRequestFullscreen) { elem.msRequestFullscreen(); }
+        }
+
+        function exitFullscreen() {
+            if (document.fullscreenElement || document.webkitFullscreenElement) {
+                if (document.exitFullscreen) { document.exitFullscreen(); }
+                else if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); }
+                else if (document.msExitFullscreen) { document.msExitFullscreen(); }
+            }
+        }
+
+        window.addEventListener('popstate', (event) => {
+            if (gameState === 'playing' || gameState === 'finished') {
+                showMainMenu(true);
+            }
+        });
+
+        function initThreeJS() {
+            const canvas = document.getElementById('game-canvas');
+            
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setClearColor(0x000000);
+
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x000000, 0.001);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+            scene.add(ambientLight);
+            
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+            dirLight.position.set(5, 10, 5);
+            scene.add(dirLight);
+
+            window.addEventListener('resize', onWindowResize, false);
+
+            trackGroup = new THREE.Group();
+            scene.add(trackGroup);
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function initLevel(levelNum) {
+            currentLevel = levelNum;
+            const config = levels[currentLevel];
+
+            gameState = 'playing';
+            moveLeft = false;
+            moveRight = false;
+            
+            while(trackGroup.children.length > 0) { 
+                const child = trackGroup.children[0];
+                trackGroup.remove(child); 
+            }
+            obstacles = [];
+
+            const ballGeo = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
+            let ballMat;
+            if(config.ball.clearcoat) {
+                ballMat = new THREE.MeshPhysicalMaterial({
+                    color: config.ball.color, metalness: 0.9, roughness: 0.0,
+                    transmission: 0.9, thickness: 1.5, transparent: true
+                });
+            } else {
+                ballMat = new THREE.MeshStandardMaterial({
+                    color: config.ball.color, metalness: config.ball.metalness,
+                    roughness: config.ball.roughness, emissive: config.ball.color, emissiveIntensity: 0.1
+                });
+            }
+            ball = new THREE.Mesh(ballGeo, ballMat);
+            ball.position.set(0, BALL_RADIUS, 0);
+            trackGroup.add(ball);
+
+            const ballLight = new THREE.PointLight(config.neon, 1, 20);
+            ball.add(ballLight);
+
+            const edgeGeo = new THREE.BoxGeometry(0.5, 0.2, config.length + 200);
+            const edgeMat = new THREE.MeshStandardMaterial({ 
+                color: config.neon, emissive: config.neon, emissiveIntensity: 2 
+            });
+
+            const leftEdge = new THREE.Mesh(edgeGeo, edgeMat);
+            leftEdge.position.set(-TRACK_WIDTH/2, 0.1, -config.length/2);
+            trackGroup.add(leftEdge);
+
+            const rightEdge = new THREE.Mesh(edgeGeo, edgeMat);
+            rightEdge.position.set(TRACK_WIDTH/2, 0.1, -config.length/2);
+            trackGroup.add(rightEdge);
+
+            const finishGeo = new THREE.PlaneGeometry(TRACK_WIDTH, 5);
+            const finishMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+            finishLine = new THREE.Mesh(finishGeo, finishMat);
+            finishLine.rotation.x = -Math.PI / 2;
+            finishLine.position.set(0, 0.05, -config.length);
+            trackGroup.add(finishLine);
+
+            const obsGeo = new THREE.BoxGeometry(TRACK_WIDTH/2, OBS_HEIGHT, OBS_DEPTH);
+            const obsMat = new THREE.MeshStandardMaterial({
+                color: config.neon, emissive: config.neon, emissiveIntensity: 0.8
+            });
+
+            const safeZoneDistance = config.speed * 60 * 3; 
+            let startZ = -safeZoneDistance;
+            
+            while (startZ > -config.length + 100) {
+                const obs = new THREE.Mesh(obsGeo, obsMat);
+                const isLeft = Math.random() > 0.5;
+                obs.position.set(isLeft ? -TRACK_WIDTH/4 : TRACK_WIDTH/4, OBS_HEIGHT/2, startZ);
+                trackGroup.add(obs);
+                obstacles.push(obs);
+                startZ -= (config.obsFreq + Math.random() * 40);
+            }
+
+            const particleCount = 1500;
+            const particleGeo = new THREE.BufferGeometry();
+            const particlePos = new Float32Array(particleCount * 3);
+            
+            for(let i=0; i < particleCount * 3; i+=3) {
+                const radius = 20 + Math.random() * 80;
+                const theta = Math.random() * Math.PI * 2;
+                particlePos[i] = radius * Math.cos(theta);
+                particlePos[i+1] = (Math.random() - 0.5) * 100;
+                particlePos[i+2] = (Math.random() * (config.length + 500)) * -1 + 100;
+            }
+            
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+            const particleMat = new THREE.PointsMaterial({
+                color: config.particles, size: 0.5, transparent: true, opacity: 0.8
+            });
+            particles = new THREE.Points(particleGeo, particleMat);
+            trackGroup.add(particles);
+
+            updateCamera(true);
+
+            document.getElementById('hud-level').innerText = levelNum;
+            hideAllMenus();
+            document.getElementById('hud').classList.remove('hidden');
+            document.getElementById('controls').classList.remove('hidden');
+
+            playUpbeatMusic(levelNum);
+
+            if(!animationId) animate();
+        }
+
+        function setupControls() {
+            const btnLeft = document.getElementById('btn-left');
+            const btnRight = document.getElementById('btn-right');
+
+            const startLeft = (e) => { e.preventDefault(); moveLeft = true; btnLeft.classList.add('active-touch'); };
+            const stopLeft = (e) => { e.preventDefault(); moveLeft = false; btnLeft.classList.remove('active-touch'); };
+            const startRight = (e) => { e.preventDefault(); moveRight = true; btnRight.classList.add('active-touch'); };
+            const stopRight = (e) => { e.preventDefault(); moveRight = false; btnRight.classList.remove('active-touch'); };
+
+            btnLeft.addEventListener('mousedown', startLeft);
+            btnLeft.addEventListener('touchstart', startLeft, {passive: false});
+            window.addEventListener('mouseup', stopLeft);
+            btnLeft.addEventListener('touchend', stopLeft, {passive: false});
+            
+            btnRight.addEventListener('mousedown', startRight);
+            btnRight.addEventListener('touchstart', startRight, {passive: false});
+            window.addEventListener('mouseup', stopRight);
+            btnRight.addEventListener('touchend', stopRight, {passive: false});
+
+            window.addEventListener('keydown', (e) => {
+                if(e.key === 'ArrowLeft' || e.key === 'a') moveLeft = true;
+                if(e.key === 'ArrowRight' || e.key === 'd') moveRight = true;
+            });
+            window.addEventListener('keyup', (e) => {
+                if(e.key === 'ArrowLeft' || e.key === 'a') moveLeft = false;
+                if(e.key === 'ArrowRight' || e.key === 'd') moveRight = false;
+            });
+        }
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+
+            if (gameState === 'playing') {
+                const speed = levels[currentLevel].speed;
+
+                ball.position.z -= speed;
+                ball.rotation.x -= speed * 0.15;
+
+                const lateralSpeed = 0.5;
+                if (moveLeft) ball.position.x -= lateralSpeed;
+                if (moveRight) ball.position.x += lateralSpeed;
+                
+                const maxLat = TRACK_WIDTH/2 - BALL_RADIUS;
+                ball.position.x = THREE.MathUtils.clamp(ball.position.x, -maxLat, maxLat);
+                
+                updateCamera();
+
+                ballBox.setFromObject(ball);
+                ballBox.expandByScalar(-0.2); 
+
+                for (let i = 0; i < obstacles.length; i++) {
+                    if (Math.abs(obstacles[i].position.z - ball.position.z) < 10) {
+                        obsBox.setFromObject(obstacles[i]);
+                        if (ballBox.intersectsBox(obsBox)) {
+                            crashEffect();
+                            initLevel(currentLevel); 
+                            return;
+                        }
+                    }
+                }
+
+                if (ball.position.z <= -levels[currentLevel].length) {
+                    levelComplete();
+                }
+
+            } else if (gameState === 'finished') {
+                const speed = levels[currentLevel].speed * 2; 
+                ball.position.z -= speed;
+                ball.rotation.x -= speed * 0.2;
+            }
+
+            if(particles) particles.rotation.z += 0.0005;
+
+            renderer.render(scene, camera);
+        }
+
+        function updateCamera(instant = false) {
+            const targetZ = ball.position.z + 15;
+            const targetX = ball.position.x * 0.5; 
+            const targetY = 7;
+
+            if (instant) {
+                camera.position.set(targetX, targetY, targetZ);
+            } else {
+                camera.position.z += (targetZ - camera.position.z) * 0.15;
+                camera.position.x += (targetX - camera.position.x) * 0.1;
+                camera.position.y = targetY;
+            }
+            camera.lookAt(ball.position.x * 0.2, 0, ball.position.z - 20);
+        }
+
+        function crashEffect() {
+            document.body.style.backgroundColor = '#550000';
+            setTimeout(() => { document.body.style.backgroundColor = '#000000'; }, 100);
+        }
+
+        function levelComplete() {
+            gameState = 'finished';
+            document.getElementById('controls').classList.add('hidden');
+            document.getElementById('hud').classList.add('hidden');
+
+            setTimeout(() => {
+                if (currentLevel < 5) {
+                    document.getElementById('menu-complete').classList.remove('hidden');
+                } else {
+                    document.getElementById('menu-victory').classList.remove('hidden');
+                    playVictorySound();
+                }
+            }, 1500);
+        }
+
+        function stopMusic() {
+            clearTimeout(musicTimerID);
+            activeNodes.forEach(node => {
+                try { if (node.stop) node.stop(); if (node.disconnect) node.disconnect(); } catch(e) {}
+            });
+            activeNodes = [];
+        }
+
+        function playUpbeatMusic(level) {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            stopMusic();
+
+            tempo = 120 + (level * 5); 
+            current16thNote = 0;
+            nextNoteTime = audioCtx.currentTime + 0.1;
+
+            scheduler(); 
+        }
+
+        function nextNote() {
+            const secondsPerBeat = 60.0 / tempo;
+            nextNoteTime += 0.25 * secondsPerBeat; 
+            current16thNote++;
+            if (current16thNote === 16) {
+                current16thNote = 0;
+            }
+        }
+
+        function scheduleNote(beatNumber, time) {
+            const chords = [
+                [220.00, 261.63, 329.63], 
+                [174.61, 220.00, 261.63], 
+                [261.63, 329.63, 392.00], 
+                [196.00, 246.94, 293.66]  
+            ];
+            
+            const chordIdx = Math.floor(Date.now() / 2000) % 4; 
+            const currentChord = chords[chordIdx];
+
+            if (beatNumber % 4 === 0) {
+                playDrum(time, 150, 0.15);
+            }
+            
+            if (beatNumber % 2 !== 0) {
+                playNoise(time, 0.05);
+            }
+
+            if (beatNumber % 2 === 0) {
+                playSynth(currentChord[0] / 2, 'sawtooth', time, 0.1, 0.15);
+            }
+
+            const arpPattern = [0, 1, 2, 1, 0, 2, 1, 0, 2, 1, 0, 1, 2, 1, 0, 2];
+            if (beatNumber % 1 === 0) {
+                let note = currentChord[arpPattern[beatNumber]];
+                if (currentLevel >= 3 && beatNumber % 4 === 0) note *= 2; 
+                playSynth(note, 'square', time, 0.05, 0.1);
+            }
+        }
+
+        function scheduler() {
+            while (nextNoteTime < audioCtx.currentTime + 0.1) {
+                scheduleNote(current16thNote, nextNoteTime);
+                nextNote();
+            }
+            musicTimerID = setTimeout(scheduler, 25.0);
+        }
+
+        function playSynth(freq, type, time, vol, dur) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.value = freq;
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(vol, time + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
+            
+            osc.start(time);
+            osc.stop(time + dur);
+            activeNodes.push(osc, gain);
+        }
+
+        function playDrum(time, startFreq, dur) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.frequency.setValueAtTime(startFreq, time);
+            osc.frequency.exponentialRampToValueAtTime(10, time + dur); 
+            
+            gain.gain.setValueAtTime(0.6, time);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
+            
+            osc.start(time);
+            osc.stop(time + dur);
+            activeNodes.push(osc, gain);
+        }
+
+        function playNoise(time, dur) {
+            playSynth(8000, 'square', time, 0.03, dur);
+        }
+
+        function playVictorySound() {
+            stopMusic();
+            if (!audioCtx) return;
+            const time = audioCtx.currentTime;
+            [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => { 
+                playSynth(freq, 'square', time + (i * 0.1), 0.1, 0.5);
+            });
+        }
+
+        function startGame(level) {
+            enterFullscreen();
+
+            if (location.hash !== '#game') {
+                history.pushState({ state: 'game' }, '', '#game');
+            }
+
+            initLevel(level);
+        }
+
+        function startNextLevel() {
+            if (currentLevel < 5) {
+                initLevel(currentLevel + 1);
+            }
+        }
+
+        function showMainMenu(fromHistoryBack = false) {
+            if (!fromHistoryBack && location.hash === '#game') {
+                history.back(); 
+                return;
+            }
+
+            exitFullscreen();
+            
+            gameState = 'menu';
+            hideAllMenus();
+            document.getElementById('menu-main').classList.remove('hidden');
+            document.getElementById('controls').classList.add('hidden');
+            document.getElementById('hud').classList.add('hidden');
+            
+            stopMusic(); 
+
+            while(trackGroup && trackGroup.children.length > 0) { 
+                trackGroup.remove(trackGroup.children[0]); 
+            }
+            if(renderer && scene && camera) renderer.render(scene, camera);
+        }
+
+        function hideAllMenus() {
+            document.getElementById('menu-main').classList.add('hidden');
+            document.getElementById('menu-complete').classList.add('hidden');
+            document.getElementById('menu-victory').classList.add('hidden');
+        }
+
+        window.onload = () => {
+            initThreeJS();
+            setupControls();
+        };
+
+    </script>
+</body>
+</html>
