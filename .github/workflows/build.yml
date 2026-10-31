@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Release AAB for Google Play
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Build APK via Cordova
+      - name: Build Signed AAB via Cordova
         run: |
           npm install -g cordova
           cordova create gameApp com.aymen.amoledball "Aymen Amoled Ball"
@@ -31,36 +31,20 @@ jobs:
           cp -r ./* gameApp/www/ 2>/dev/null || true
           cd gameApp
           
-          # إضافة الأيقونة إن وجدت
           if [ -f "www/icon.png" ]; then
             sed -i '/<\/widget>/i \    <icon src="www/icon.png" />' config.xml
           fi
           
-          # إعداد شاشة الانتظار لنظام أندرويد الحديث والقديم
           if [ -f "www/splash.png" ]; then
-            sed -i '/<\/widget>/i \    <splash src="www/splash.png" />' config.xml
-            sed -i '/<\/widget>/i \    <preference name="SplashScreen" value="screen" />' config.xml
-            sed -i '/<\/widget>/i \    <preference name="SplashScreenDelay" value="3000" />' config.xml
             sed -i '/<\/widget>/i \    <preference name="AndroidWindowSplashScreenAnimatedIcon" value="www/splash.png" />' config.xml
             sed -i '/<\/widget>/i \    <preference name="AndroidWindowSplashScreenBackground" value="#000000" />' config.xml
           fi
 
           cordova platform add android
+          cordova build android --release -- --packageType=bundle
 
-          # استبدال صور شاشة الانتظار مباشرة في الموارد الداخلية للأندرويد
-          if [ -f "www/splash.png" ]; then
-            mkdir -p platforms/android/app/src/main/res/drawable
-            cp www/splash.png platforms/android/app/src/main/res/drawable/screen.png 2>/dev/null || true
-            find platforms/android/app/src/main/res/ -name "*ic_cdv_splashscreen*" -exec cp www/splash.png {} \; 2>/dev/null || true
-          fi
-
-          cordova build android --debug
-          
-          # إعادة تسمية الملف إلى اسم اللعبة
-          mv platforms/android/app/build/outputs/apk/debug/app-debug.apk platforms/android/app/build/outputs/apk/debug/Aymen_Amoled_Ball.apk
-
-      - name: Upload APK Artifact
+      - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Aymen-Amoled-Ball
-          path: gameApp/platforms/android/app/build/outputs/apk/debug/Aymen_Amoled_Ball.apk
+          name: Aymen-Amoled-Ball-Release
+          path: gameApp/platforms/android/app/build/outputs/bundle/release/app-release.aab
