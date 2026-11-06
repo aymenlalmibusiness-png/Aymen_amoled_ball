@@ -24,6 +24,11 @@ jobs:
           java-version: '17'
 
       - name: Build Signed AAB via Cordova
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEYSTORE_ALIAS: ${{ secrets.RELEASE_KEYSTORE_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           npm install -g cordova
           cordova create gameApp com.aymen.amoledball "Aymen Amoled Ball"
@@ -41,7 +46,16 @@ jobs:
           fi
 
           cordova platform add android
-          cordova build android --release -- --packageType=bundle
+
+          # فك تشفير المفتاح وتحويله إلى ملف Keystore جاهز للاستخدام
+          echo $RELEASE_KEYSTORE_BASE64 | base64 --decode > release.keystore
+
+          # بناء وتوقيع حزمة الـ AAB باستخدام المفتاح وكلمات المرور السرية
+          cordova build android --release -- \
+            --keystore="../release.keystore" \
+            --storePassword="$RELEASE_KEYSTORE_PASSWORD" \
+            --alias="$RELEASE_KEYSTORE_ALIAS" \
+            --password="$RELEASE_KEY_PASSWORD"
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
