@@ -31,7 +31,7 @@ jobs:
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           npm install -g cordova
-          cordova create gameApp com.aymen.amoledball "Aymen Amoled Ball"
+          cordova create gameApp com.aymenlalmi.amoledball "Aymen Amoled Ball"
           rm -rf gameApp/www/*
           cp -r ./* gameApp/www/ 2>/dev/null || true
           cd gameApp
@@ -51,7 +51,7 @@ jobs:
           # فك تشفير مفتاح التوقيع
           echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > ../release.keystore
 
-          # توقيع ملف الـ AAB الناتج باستخدام jarsigner
+          # توقيع ملف الـ AAB الناتج
           jarsigner -verbose \
             -sigalg SHA256withRSA \
             -digestalg SHA-256 \
