@@ -23,7 +23,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Build Signed AAB via Cordova
+      - name: Build and Sign AAB
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
@@ -46,13 +46,24 @@ jobs:
           fi
 
           cordova platform add android
-          
+          cordova build android --release --packageType=bundle
+
+          # فك تشفير مفتاح التوقيع
           echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > ../release.keystore
 
-          cordova build android --release --keystore="../release.keystore" --storePassword="$RELEASE_KEYSTORE_PASSWORD" --alias="$RELEASE_KEYSTORE_ALIAS" --password="$RELEASE_KEY_PASSWORD" --packageType=bundle
+          # توقيع ملف الـ AAB الناتج باستخدام jarsigner
+          jarsigner -verbose \
+            -sigalg SHA256withRSA \
+            -digestalg SHA-256 \
+            -keystore ../release.keystore \
+            -storepass "$RELEASE_KEYSTORE_PASSWORD" \
+            -keypass "$RELEASE_KEY_PASSWORD" \
+            platforms/android/app/build/outputs/bundle/release/app-release.aab \
+            "$RELEASE_KEYSTORE_ALIAS"
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Aymen-Amoled-Ball-Release
           path: gameApp/platforms/android/app/build/outputs/bundle/release/app-release.aab
+          
