@@ -46,16 +46,10 @@ jobs:
           fi
 
           cordova platform add android
+          
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > ../release.keystore
 
-          # فك تشفير المفتاح وتحويله إلى ملف Keystore جاهز للاستخدام
-          echo $RELEASE_KEYSTORE_BASE64 | base64 --decode > release.keystore
-
-          # بناء وتوقيع حزمة الـ AAB باستخدام المفتاح وكلمات المرور السرية
-          cordova build android --release -- \
-            --keystore="../release.keystore" \
-            --storePassword="$RELEASE_KEYSTORE_PASSWORD" \
-            --alias="$RELEASE_KEYSTORE_ALIAS" \
-            --password="$RELEASE_KEY_PASSWORD"
+          cordova build android --release --keystore="../release.keystore" --storePassword="$RELEASE_KEYSTORE_PASSWORD" --alias="$RELEASE_KEYSTORE_ALIAS" --password="$RELEASE_KEY_PASSWORD" --packageType=bundle
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
